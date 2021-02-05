@@ -13,3 +13,5 @@ json. You can have a mix of build and clean jobs.
 
 Jenkins job template is pulled from the Jenkins server, and example job 
 template is provided in `template.xml`. 
+
+A script for retrieving artifacts after builds will be added.
