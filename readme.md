@@ -4,6 +4,14 @@ This is a simple script to submit a `build` or `clean` job to Jenkins. The
 script takes a json _job description_. And example is provided in 
 `job_example.json`. 
 
+# Requirements
+You need to have `python-jenkins` installed on your machine
+```
+sudo pip3 install python-jenkins
+```
+
+# Usage
+
 ```bash
 python3 submit.py job_example.py
 ```
@@ -11,7 +19,10 @@ python3 submit.py job_example.py
 To configure the operation (i.e., build or clean) modify your job description
 json. You can have a mix of build and clean jobs.
 
+
+# Extra
 Jenkins job template is pulled from the Jenkins server, and example job 
 template is provided in `template.xml`. 
 
 A script for retrieving artifacts after builds will be added.
+
