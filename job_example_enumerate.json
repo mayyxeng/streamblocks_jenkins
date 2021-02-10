@@ -3,8 +3,8 @@
   "token": "11f4d87adc1dfb229037d7ea990baa08e7",
   "jobs": [
     {
-      "name" : "u250_rvc_configuration_0_3.3_dummy",
-      "dir" : "configuration_0_3.3",
+      "name" : "u250_rvc_configuration_@INDEX@_3.3_dummy",
+      "dir" : "configuration_@INDEX@_3.3",
       "network" : "decoderDemo",
       "operation": "build",
       "params" : {
