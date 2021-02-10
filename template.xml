@@ -66,6 +66,24 @@
           <defaultValue></defaultValue>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>SC_MODE</name>
+          <description>Is this a systemc simulation build and run?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ARGS</name>
+          <description>Program arguments such:
+--hardware-profile systemc-profile.xml --l 1 -i foreman_qcif_30.bit</description>
+          <defaultValue></defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>TIMEOUT</name>
+          <description>Time out in minutes</description>
+          <defaultValue>1440</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
   </properties>
@@ -78,71 +96,93 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>echo &quot;Prepaing build ${JOB_NAME}:${BUILD_NUMBER} on ${NODE_NAME}:${EXECUTOR_NUMBER} at ${JENKINS_URL} in directory ${WORKSPACE}&quot;
+      <command>GREEN=&apos;\033[0;32m&apos;
+RED=&apos;\033[0;31m&apos;
+NC=&apos;\033[0m&apos;
+info() {
+    printf &quot;${GREEN}$@${NC}\n&quot;
+}
+error() {
+    printf &quot;${RED}$@${NC}\n&quot;
+}
+
+printf &quot;${GREEN}Prepaing build ${JOB_NAME}:${BUILD_NUMBER} on ${NODE_NAME}:${EXECUTOR_NUMBER} at ${JENKINS_URL} in directory ${WORKSPACE}${NC}&quot;
 mkdir -p project
 if [ -f &quot;submission_file&quot; ]; then
-    echo &quot;submission received.&quot;
+    info &quot;submission received.&quot;
 else
-	echo &quot;missing a submission file!&quot;
+	error &quot;missing a submission file!&quot;
     exit 1
 fi
 
 if [ -z &quot;${NETWORK_NAME}&quot; ]; then
-	echo &quot;NETWORK_NAME not specified!&quot;
+	error &quot;NETWORK_NAME not specified!&quot;
     exit 2
 	
 else
-	echo &quot;NETWORK_NAME = ${NETWORK_NAME}&quot;
-fi</command>
-      <configuredLocalRules/>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>tar -xzf submission_file -C project
-echo &quot;Submission extracted&quot;
+	info &quot;NETWORK_NAME = ${NETWORK_NAME}&quot;
+fi
+alias source=.
+tar -xzf submission_file -C project
+info &quot;Submission extracted&quot;
 mkdir -p project/build
-</command>
-      <configuredLocalRules/>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>cd project/build
-source /home/emami/streamblocks_init
-vitis_init
-echo &quot;XILINX_XRT = ${XILINX_XRT}&quot;
-echo &quot;XILINX_VITIS = ${XILINX_VITIS}&quot;
-echo &quot;XILINX_VIVADO = ${XILINX_VIVADO}&quot;
-echo &quot;Configuring the build&quot;
-configs=&quot;-DUSE_VITIS=on -DPLATFORM=${PLATFORM} -DTARGET=${TARGET} -DFPGA_NAME=${FPGA_NAME} -DHLS_CLOCK_PERIOD=${HLS_CLOCK_PERIOD} -DKERNEL_FREQ=${KERNEL_FREQ} -DIS_MPSOC=${IS_MPSOC}&quot; 
-if [ &quot;$IS_MPSOC&quot; = &apos;ON&apos; ]; then
+cd project/build
+source /scratch/jenkins_master/streamblocks_init
+
+info &quot;XILINX_XRT = ${XILINX_XRT}&quot;
+info &quot;XILINX_VITIS = ${XILINX_VITIS}&quot;
+info &quot;XILINX_VIVADO = ${XILINX_VIVADO}&quot;
+info &quot;Configuring the build&quot;
+configs=&quot;-DUSE_VITIS=on -DPLATFORM=${PLATFORM} -DTARGET=${TARGET} -DFPGA_NAME=${FPGA_NAME} -DHLS_CLOCK_PERIOD=${HLS_CLOCK_PERIOD} -DKERNEL_FREQ=${KERNEL_FREQ} -DIS_MPSOC=${IS_MPSOC}&quot;
+if [ &quot;$IS_MPSOC&quot; = &quot;true&quot; ]; then
 	configs=&quot;$configs -DMPSOC_CLOCK_ID=${MPSOC_CLOCK_ID}&quot;
 fi
 cmake .. $configs
-</command>
-      <configuredLocalRules/>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>cd project/build
-source /home/emami/streamblocks_init
-vitis_init
-echo &quot;Making XO&quot;
-make ${NETWORK_NAME}_kernel_xo -j 4</command>
-      <configuredLocalRules/>
-    </hudson.tasks.Shell>
-    <hudson.tasks.Shell>
-      <command>cd project/build
-source /home/emami/streamblocks_init
-vitis_init
-echo &quot;Making xclbin&quot;
-make ${NETWORK_NAME}_kernel_xclbin -j
-echo &quot;XCLBIN build done!&quot;
-cd ../bin/
-tar -czf ${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz xclbin
-tar -czf ${JOB_NAME}_${BUILD_NUMBER}_reports.tar.gz ../build/vivado-hls/_x/reports ../build/vivado-hls/_x/link/int/_new_clk_freq
-echo &quot;xclbin available at ${WORKSPACE}/project/bin/${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz&quot;
+info &quot;SC_MODE=${SC_MODE}&quot;
+if [ &quot;${SC_MODE}&quot; = false ]; then
+    
+    # Build FPGA binary
+    info &quot;Making XO&quot;
+    make ${NETWORK_NAME}_kernel_xo -j 4
+    info &quot;Making xclbin&quot;
+    make ${NETWORK_NAME}_kernel_xclbin -j
+    info &quot;XCLBIN build done!&quot;
+    cd ../bin/
+    tar -czf ${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz xclbin
+    info &quot;xclbin available at ${WORKSPACE}/project/bin/${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz&quot;
+
+else
+
+    # Build and run the systemc binary
+    if [ -f &quot;../vivado-hls/systemc&quot;]; then
+        info &quot;Bulding systemc co-simulation binary&quot;
+        make ${NETWORK_NAME} -j
+        cd ../bin
+        info &quot;Executing simulation&quot;
+        ./${NETWORK_NAME} ${ARGS}
+    else 
+        error &quot;SystemC source files not found! Are you sure this is a systemc project?&quot;
+        exit 3
+    fi
+fi
+
+
+
 </command>
       <configuredLocalRules/>
     </hudson.tasks.Shell>
   </builders>
-  <publishers/>
+  <publishers>
+    <hudson.tasks.ArtifactArchiver>
+      <artifacts>project/bin/**</artifacts>
+      <allowEmptyArchive>false</allowEmptyArchive>
+      <onlyIfSuccessful>false</onlyIfSuccessful>
+      <fingerprint>false</fingerprint>
+      <defaultExcludes>true</defaultExcludes>
+      <caseSensitive>true</caseSensitive>
+      <followSymlinks>false</followSymlinks>
+    </hudson.tasks.ArtifactArchiver>
+  </publishers>
   <buildWrappers>
     <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.38">
       <deleteDirs>false</deleteDirs>
@@ -150,6 +190,17 @@ echo &quot;xclbin available at ${WORKSPACE}/project/bin/${JOB_NAME}_${BUILD_NUMB
       <externalDelete></externalDelete>
       <disableDeferredWipeout>false</disableDeferredWipeout>
     </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.build__timeout.BuildTimeoutWrapper plugin="build-timeout@1.20">
+      <strategy class="hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy">
+        <timeoutMinutes>${TIMEOUT}</timeoutMinutes>
+      </strategy>
+      <operationList>
+        <hudson.plugins.build__timeout.operations.AbortOperation/>
+      </operationList>
+    </hudson.plugins.build__timeout.BuildTimeoutWrapper>
     <hudson.plugins.timestamper.TimestamperBuildWrapper plugin="timestamper@1.11.8"/>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.7.5">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
   </buildWrappers>
 </project>
