@@ -184,27 +184,31 @@ class JenkinsJob:
   """
   def query(self, server, user):
     job_name = self.jobName(user)
-    if self.jobExists(server, job_name):
-      build_info = self.__get_last_build_info__(server, user)
-      if (build_info != None) and (build_info['building']):
+    # if self.jobExists(server, job_name):
+    build_info = self.__get_last_build_info__(server, user)
+    if build_info != None:
+      if build_info['building'] == True:
         show_console = queryYesNo("Job " + job_name + " is building, show console output?", 'yes')
         if show_console:
           console_output = server.get_build_console_output(job_name, build_info['number'])
           print("-------------------------------------------------------------")
           print("JOB: %s"%job_name)
           print("\n\n%s\n\n"%console_output)
-          print("=============================================================")
-    else:
-      print("Job %s does not exits, skipping query."%(job_name))
+        print("=============================================================")
+      else:
+        print("Job %s is not building"%job_name)
+    # else:
+    #   print("Job %s does not exits, skipping query."%(job_name))
     
   def __get_last_build_info__(self, server, user):
     job_name = self.jobName(user)
     if self.jobExists(server, user):
       print("Pulling %s job info"%job_name)
       job_info = server.get_job_info(job_name)
-      last_build_number = job_info['lastBuild']['number']
-      build_info = server.get_build_info(job_name, last_build_number)
-      return build_info
+      if job_info != None:
+        last_build_number = job_info['lastBuild']['number']
+        build_info = server.get_build_info(job_name, last_build_number)
+        return build_info
     return None
   
   """
