@@ -148,7 +148,7 @@ if [ &quot;${SC_MODE}&quot; = false ]; then
     make ${NETWORK_NAME}_kernel_xclbin -j
     info &quot;XCLBIN build done!&quot;
     cd ../bin/
-    tar -czf ${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz xclbin
+    tar -czf ${NETWORK_NAME}_${BUILD_NUMBER}_xclbin.tar.gz xclbin
     info &quot;xclbin available at ${WORKSPACE}/project/bin/${JOB_NAME}_${BUILD_NUMBER}_xclbin.tar.gz&quot;
 
 else

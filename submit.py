@@ -4,6 +4,7 @@ import json
 import jenkins
 import tarfile
 import os
+import requests
 
 
 import sys
@@ -75,7 +76,7 @@ class JenkinsJob:
       self.params = job_info['params']
     except KeyError as err:
       printError("Invalid job key:")
-      raise RunTimeError from err
+      raise RuntimeError from err
   
   def jobName(self, user):
     return user + "/" + self.name
@@ -84,7 +85,7 @@ class JenkinsJob:
   """
   Submit the job to the server
   """
-  def submit(self, server, user):
+  def submit(self, server, user, token):
     job_name = self.jobName(user)
     job_exists = self.jobExists(server, user)
     if self.operation == "build":
@@ -100,7 +101,7 @@ class JenkinsJob:
         if should_build:
           try:
 
-            self.__submit_build__(server, user)
+            self.__submit_build__(server, user, token)
           except subprocess.SubprocessError as err:
             print("Failed to enqueue job %s\n:"%(job_info['name'], err))
             pass
@@ -111,12 +112,16 @@ class JenkinsJob:
         self.__submit_clean__(server, user)
       else:
         print("Skipping job " + job_info['name'])
+    
     elif self.operation == "query":
       self.query(server, user)
-      
+    elif self.operation == "download":
+      self.download(server, user, token)
+    else:
+      print("Invalid operation " + self.operation)  
         
   
-  def __submit_build__(self, server, user):
+  def __submit_build__(self, server, user, token):
     job_name = self.jobName(user)
     
     root_dir = os.getcwd()
@@ -179,15 +184,12 @@ class JenkinsJob:
   """
   def query(self, server, user):
     job_name = self.jobName(user)
-    if self.jobExists(server, user):
-      print("Pulling %s job info"%job_name)
-      job_info = server.get_job_info(job_name)
-      last_build_number = job_info['lastBuild']['number']
-      build_info = server.get_build_info(job_name, last_build_number)
-      if build_info['building']:
+    if self.jobExists(server, job_name):
+      build_info = self.__get_last_build_info__(server, user)
+      if (build_info != None) and (build_info['building']):
         show_console = queryYesNo("Job " + job_name + " is building, show console output?", 'yes')
         if show_console:
-          console_output = server.get_build_console_output(job_name, last_build_number)
+          console_output = server.get_build_console_output(job_name, build_info['number'])
           print("-------------------------------------------------------------")
           print("JOB: %s"%job_name)
           print("\n\n%s\n\n"%console_output)
@@ -195,12 +197,47 @@ class JenkinsJob:
     else:
       print("Job %s does not exits, skipping query."%(job_name))
     
-
+  def __get_last_build_info__(self, server, user):
+    job_name = self.jobName(user)
+    if self.jobExists(server, user):
+      print("Pulling %s job info"%job_name)
+      job_info = server.get_job_info(job_name)
+      last_build_number = job_info['lastBuild']['number']
+      build_info = server.get_build_info(job_name, last_build_number)
+      return build_info
+    return None
+  
   """
   Download the artifacts
   """
   def download(self, server, user, token):
-    raise RunTimeError("download not implemented")
+
+    job_name = self.jobName(user)
+    if self.jobExists(server, user):
+      build_info = self.__get_last_build_info__(server, user)
+      if build_info != None:
+        if build_info['building'] == False and len(build_info['artifacts']) > 0:
+          job_url = build_info['url']
+          dl_url = job_url + 'artifact/*zip*/archive.zip'
+          print("Downloading artifacts from " + dl_url)
+          dl_dir = job_info['dir'] + '/artifacts.zip' 
+          with open(dl_dir, 'wb') as f:
+            response = requests.get(dl_url, stream=True, auth=(user, token))
+            total_length = response.headers.get('content-length')
+           
+            if total_length is None: # no content length header
+                f.write(response.content)
+            else:
+                dl = 0
+                total_length = int(total_length)
+                for data in response.iter_content(chunk_size=4096):
+                    dl += len(data)
+                    f.write(data)
+                    done = int(50 * dl / total_length)
+                    sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )    
+                    sys.stdout.flush()
+          
+      
 
   """
   Check if the job exits
@@ -238,7 +275,7 @@ if __name__ == "__main__":
     user = build_config['username']
     token = build_config['token']
     for job_info in build_config['jobs']:
-      JenkinsJob(job_info).submit(jenkins_server, user)
+      JenkinsJob(job_info).submit(jenkins_server, user, token)
     print("All done. Visit %sjob/%s to query the status of your jobs."%(jenkins_url, user))
      
     
