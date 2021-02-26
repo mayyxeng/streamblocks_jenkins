@@ -89,7 +89,7 @@ class JenkinsJob:
   Submit the job to the server
   """
 
-    def submit(self, server, user, token):
+    def submit(self, server, user, token, template_name):
         job_name = self.jobName(user)
         job_exists = self.jobExists(server, user)
         if self.operation == "build":
@@ -98,7 +98,7 @@ class JenkinsJob:
                 should_build = queryYesNo(
                     "Job " + self.name + " already exists, do you want to rebuild?", 'yes')
             else:
-                template_name = 'templates/shell_build_template'
+                # template_name = 'templates/shell_build_template'
                 print("Pulling job template from jenkins %s" % (template_name))
                 job_template = server.get_job_config(template_name)
                 server.create_job(job_name, job_template)
@@ -277,8 +277,8 @@ if __name__ == "__main__":
         description="Submit streamblocks generated code to build server")
     args_parser.add_argument(
         'jobs', type=str, metavar='FILE', help='json build jobs configuration file')
-    # args_parser.add_argument('-t', '--template', type=str, metavar="TEMPLATE",
-    #                          help='jenkins xml job template, if not provided the default job template is pulled from the server')
+    args_parser.add_argument('-t', '--template', type=str, metavar="TEMPLATE",
+                             help='jenkins job template, if not provided the default job template is pulled from the server', default='templates/shell_build_template')
     args_parser.add_argument('-s', '--server', type=str, metavar="URL", 
       help="jenkins server address url", default=default_server)
     args = args_parser.parse_args()
@@ -298,6 +298,6 @@ if __name__ == "__main__":
         user = build_config['username']
         token = build_config['token']
         for job_info in build_config['jobs']:
-            JenkinsJob(job_info).submit(jenkins_server, user, token)
+            JenkinsJob(job_info).submit(jenkins_server, user, token, args.template)
         print("All done. Visit %sjob/%s to query the status of your jobs." %
               (jenkins_url, user))
