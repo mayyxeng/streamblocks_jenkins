@@ -28,6 +28,7 @@ if __name__ == "__main__":
                              type=str, help="outptut file", default='enumerated.json')
     args_parser.add_argument('--operation', metavar="OP", type=str, choices=['build', 'clean', 'query', 'download'],
                              help='type of operation, overrides existing', default='build')
+    args_parser.add_argument('--clocks', nargs='+', default=['3.3'])
     args = args_parser.parse_args()
 
     with open(args.jobs, 'r') as build_config_file:
@@ -38,19 +39,28 @@ if __name__ == "__main__":
         jenkins_url = 'http://iccluster126.iccluster.epfl.ch:8080/'
         jenkins_server = jenkins.Jenkins(jenkins_url,
                                          username=build_config['username'], password=build_config['token'])
-
+        
         user = build_config['username']
         token = build_config['token']
         jobs_desc = []
         for job in build_config['jobs']:
             for i in range(args.start, args.end + 1, 1):
-                new_job = job.copy()
-                new_job['name'] = new_job['name'].replace("@INDEX@", str(i))
-                new_job['dir'] = new_job['dir'].replace("@INDEX@", str(i))
-                new_job['network'] = new_job['network'].replace(
-                    "@INDEX@", str(i))
-                new_job['operation'] = args.operation
-                jobs_desc.append(new_job)
+                for clk in args.clocks:
+                    new_job = job.copy()
+                    new_job['name'] = new_job['name'].replace("@INDEX@", str(i))
+                    new_job['name'] = new_job['name'].replace("@CLOCK@", str(clk))
+                    new_job['dir'] = new_job['dir'].replace("@INDEX@", str(i))
+                    new_job['dir'] = new_job['dir'].replace("@CLOCK@", str(clk))
+                    new_job['network'] = new_job['network'].replace(
+                        "@INDEX@", str(i))
+                    new_job['network'] = new_job['network'].replace(
+                        "@CLOCK@", str(clk))
+                    new_job['params'] = job['params'].copy()
+                    new_job['params']['HLS_CLOCK_PERIOD'] = float(clk)
+                    new_job['params']['KERNEL_FREQ'] = int(1000. / float(clk))
+                    new_job['operation'] = args.operation
+                    
+                    jobs_desc.append(new_job)
 
         build_config['jobs'] = jobs_desc
         with open(args.output, 'w') as output_file:
