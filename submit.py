@@ -137,13 +137,15 @@ class JenkinsJob:
         def tardir(paths, tar_name):
             with tarfile.open(tar_name, 'w:gz') as tar_handle:
                 for path in paths:
-                    tar_handle.add(path, recursive=True)
+                    if os.path.exists(path):
+                        tar_handle.add(path, recursive=True)
 
         tarbal = self.name + '.tar.gz'
         tar_sources = [
             'vivado-hls',
             'multicore',
-            'CMakeLists.txt'
+            'CMakeLists.txt',
+            'bin'
         ]
 
         print("Creating compressesd file " + tarbal)
