@@ -92,15 +92,21 @@ class JenkinsJob:
     def submit(self, server, user, token, template_name):
         job_name = self.jobName(user)
         job_exists = self.jobExists(server, user)
+        job_template = jenkins.EMPTY_CONFIG_XML
+        try:
+            print("Pulling job template from jenkins %s" % (template_name))
+            job_template = server.get_job_config(template_name)
+        except Exception as e:
+            raise RuntimeError("Could not fetch job template " + template_name + ": " + str(e))
         if self.operation == "build":
             should_build = False
             if job_exists:
                 should_build = queryYesNo(
-                    "Job " + self.name + " already exists, do you want to rebuild?", 'yes')
+                    "Job " + self.name + " already exists, do you want to reconfigure and rebuild?", 'yes')
+                if should_build:
+                    server.reconfig_job(job_name, job_template)
             else:
                 # template_name = 'templates/shell_build_template'
-                print("Pulling job template from jenkins %s" % (template_name))
-                job_template = server.get_job_config(template_name)
                 server.create_job(job_name, job_template)
                 should_build = True
             if should_build:
