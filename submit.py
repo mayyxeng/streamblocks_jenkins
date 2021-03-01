@@ -185,7 +185,15 @@ class JenkinsJob:
 
     def __submit_clean__(self, server, user):
         job_name = self.jobName(user)
-        server.delete_job(job_name)
+        if self.jobExists(server, user):
+
+            job_info = server.get_job_info(job_name)        
+            if job_info != None:
+                last_build_number = job_info['lastBuild']['number']
+                print("Stopping build for job %s"%job_name)
+                server.stop_build(job_name, last_build_number)
+                print("Cleaning job %s"%job_name)
+                server.delete_job(job_name)
 
     """
   Query the status of the job
