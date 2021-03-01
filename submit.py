@@ -70,9 +70,10 @@ class JenkinsJob:
 
     """
 
-    def __init__(self, job_info):
+    def __init__(self, job_info, no_prompt=False):
 
         try:
+            self.no_prompt = no_prompt
             self.name = job_info['name']
             self.dir = job_info['dir']
             self.network = job_info['network']
@@ -97,11 +98,12 @@ class JenkinsJob:
             print("Pulling job template from jenkins %s" % (template_name))
             job_template = server.get_job_config(template_name)
         except Exception as e:
-            raise RuntimeError("Could not fetch job template " + template_name + ": " + str(e))
+            raise RuntimeError(
+                "Could not fetch job template " + template_name + ": " + str(e))
         if self.operation == "build":
             should_build = False
             if job_exists:
-                should_build = queryYesNo(
+                should_build = True if self.no_prompt else queryYesNo(
                     "Job " + self.name + " already exists, do you want to reconfigure and rebuild?", 'yes')
                 if should_build:
                     server.reconfig_job(job_name, job_template)
@@ -119,8 +121,9 @@ class JenkinsJob:
                     pass
 
         elif self.operation == "clean":
-
-            if job_exists and queryYesNo("Do you want to clean job " + job_info['name'] + "?", 'no'):
+            prompt = True if self.no_prompt else queryYesNo(
+                "Do you want to clean job " + job_info['name'] + "?", 'no')
+            if job_exists and prompt:
                 self.__submit_clean__(server, user)
             else:
                 print("Skipping job " + job_info['name'])
@@ -187,12 +190,12 @@ class JenkinsJob:
         job_name = self.jobName(user)
         if self.jobExists(server, user):
 
-            job_info = server.get_job_info(job_name)        
+            job_info = server.get_job_info(job_name)
             if job_info != None:
                 last_build_number = job_info['lastBuild']['number']
-                print("Stopping build for job %s"%job_name)
+                print("Stopping build for job %s" % job_name)
                 server.stop_build(job_name, last_build_number)
-                print("Cleaning job %s"%job_name)
+                print("Cleaning job %s" % job_name)
                 server.delete_job(job_name)
 
     """
@@ -205,7 +208,7 @@ class JenkinsJob:
         build_info = self.__get_last_build_info__(server, user)
         if build_info != None:
             if build_info['building'] == True:
-                show_console = queryYesNo(
+                show_console = True if self.no_prompt else queryYesNo(
                     "Job " + job_name + " is building, show console output?", 'yes')
                 if show_console:
                     console_output = server.get_build_console_output(
@@ -287,7 +290,6 @@ class JenkinsJob:
 
 if __name__ == "__main__":
 
-
     default_server = 'http://iccluster126.iccluster.epfl.ch:8080/'
     args_parser = argparse.ArgumentParser(
         description="Submit streamblocks generated code to build server")
@@ -295,8 +297,10 @@ if __name__ == "__main__":
         'jobs', type=str, metavar='FILE', help='json build jobs configuration file')
     args_parser.add_argument('-t', '--template', type=str, metavar="TEMPLATE",
                              help='jenkins job template, if not provided the default job template is pulled from the server', default='templates/shell_build_template')
-    args_parser.add_argument('-s', '--server', type=str, metavar="URL", 
-      help="jenkins server address url", default=default_server)
+    args_parser.add_argument('-s', '--server', type=str, metavar="URL",
+                             help="jenkins server address url", default=default_server)
+    args_parser.add_argument(
+        '-y' '--no-prompt', help='Do not prompt for clean or query jobs', action='store_true')
     args = args_parser.parse_args()
 
     with open(args.jobs, 'r') as build_config_file:
@@ -314,6 +318,7 @@ if __name__ == "__main__":
         user = build_config['username']
         token = build_config['token']
         for job_info in build_config['jobs']:
-            JenkinsJob(job_info).submit(jenkins_server, user, token, args.template)
+            JenkinsJob(job_info, args.no_prompt).submit(
+                jenkins_server, user, token, args.template)
         print("All done. Visit %sjob/%s to query the status of your jobs." %
               (jenkins_url, user))
