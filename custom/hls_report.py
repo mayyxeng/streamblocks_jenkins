@@ -167,14 +167,17 @@ class CustomJenkinsJob(StreamblocksBuild.JenkinsJob):
 
           matches = regex_slack_violation.match(ln)
           if matches:
-            print("Found violation")
+            
             violation = float(matches.group(1))
             source = lines[ln_num + 1].split()[1]
             dest = lines[ln_num + 3].split()[1]
+            required = float(lines[ln_num + 7].split()[1][0:-2])
             slack_violations.append({
               'violation' : violation,
               'source' : source,
-              'destination': dest
+              'destination': dest,
+              'requirement' : required,
+              'allowed' : required - violation
             })
         return slack_violations
       
