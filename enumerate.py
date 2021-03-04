@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-import subprocess
+
 import argparse
 import json
-import jenkins
-import tarfile
-import os
-
-
-import sys
 
 
 if __name__ == "__main__":
@@ -36,10 +30,6 @@ if __name__ == "__main__":
         print("Reading build config:")
         build_config = json.load(build_config_file)
 
-        jenkins_url = 'http://iccluster126.iccluster.epfl.ch:8080/'
-        jenkins_server = jenkins.Jenkins(jenkins_url,
-                                         username=build_config['username'], password=build_config['token'])
-        
         user = build_config['username']
         token = build_config['token']
         jobs_desc = []
