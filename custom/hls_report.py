@@ -62,12 +62,12 @@ class CustomJenkinsJob(StreamblocksBuild.JenkinsJob):
         """
         Get the resource and timing report in a dictionary
         """
-        timing_report_path = extract_dir + '/project/bin/reports/timing_summary.rpt'
+        timing_report_path = extract_dir + 'archive/project/bin/reports/timing_summary.rpt'
         result = {'timing': None, 'utilization': None}
         # if os.path.exists(timing_report_path):
 
         utilization_report_path = extract_dir + \
-            '/project/bin/reports/report_utilization.rpt'
+            'archive/project/bin/reports/report_utilization.rpt'
         util_report = StreamblocksBuild.Utilities.__get_utilization_report__(
             utilization_report_path)
         timing_report = StreamblocksBuild.Utilities.__get_timing_report__(
@@ -79,7 +79,7 @@ class CustomJenkinsJob(StreamblocksBuild.JenkinsJob):
 
     def __get_instance_report__(extract_dir):
 
-        instance_report_gz_path = extract_dir + '/project/bin/instance_reports.tar.gz'
+        instance_report_gz_path = extract_dir + 'archive/project/bin/instance_reports.tar.gz'
         if not os.path.exists(instance_report_gz_path):
             StreamblocksBuild.printError(
                 "Instance report file does not exist at " + str(instance_report_gz_path))
