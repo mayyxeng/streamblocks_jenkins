@@ -180,6 +180,7 @@ if __name__ == "__main__":
                             help='save all the summaries in a single file', default=False)
     arg_parser.add_argument('--output', '-o', type=str, metavar='FILE',
                             help='output file name if --single-file or -S is provided', default='summary.json')
+    arg_parser.add_argument('-y', '--no-prompt', action='store_true', default=False, help="do not prompt")
     args = arg_parser.parse_args()
 
     with open(args.jobs, 'r') as jobs_fp:
@@ -197,7 +198,7 @@ if __name__ == "__main__":
         token = jobs_desc['token']
         all_summaries = []
         for job_info in jobs_desc['jobs']:
-            summary = SystemCJob(job_info, no_prompt=False).getReport(
+            summary = SystemCJob(job_info, no_prompt=args.no_prompt).getReport(
                 jenkins_server, args.runs, user, token)
             
             job_info['artifacts'] = summary
