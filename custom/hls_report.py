@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import json
 import re
 from zipfile import ZipFile
@@ -62,12 +63,12 @@ class CustomJenkinsJob(StreamblocksBuild.JenkinsJob):
         """
         Get the resource and timing report in a dictionary
         """
-        timing_report_path = extract_dir + '/project/bin/reports/timing_summary.rpt'
+        timing_report_path = extract_dir + '/archive/project/bin/reports/timing_summary.rpt'
         result = {'timing': None, 'utilization': None}
         # if os.path.exists(timing_report_path):
 
         utilization_report_path = extract_dir + \
-            '/project/bin/reports/report_utilization.rpt'
+            '/archive/project/bin/reports/report_utilization.rpt'
         util_report = StreamblocksBuild.Utilities.__get_utilization_report__(
             utilization_report_path)
         timing_report = StreamblocksBuild.Utilities.__get_timing_report__(
@@ -79,7 +80,7 @@ class CustomJenkinsJob(StreamblocksBuild.JenkinsJob):
 
     def __get_instance_report__(extract_dir):
 
-        instance_report_gz_path = extract_dir + '/project/bin/instance_reports.tar.gz'
+        instance_report_gz_path = extract_dir + '/archive/project/bin/instance_reports.tar.gz'
         if not os.path.exists(instance_report_gz_path):
             StreamblocksBuild.printError(
                 "Instance report file does not exist at " + str(instance_report_gz_path))
@@ -123,16 +124,17 @@ if __name__ == "__main__":
 
         user = jobs_desc['username']
         token = jobs_desc['token']
-        all_summaries = {}
+        all_summaries = []
         for job_info in jobs_desc['jobs']:
             summary = CustomJenkinsJob(job_info, no_prompt=False).getReport(
                 jenkins_server, user, token)
             if not args.single_file:
                 summary_path = job_info['dir'] + '/instance_report.json'
+                job_info['artifacts'] = summary
                 with open(summary_path, 'w') as fp:
-                    fp.write(json.dumps(summary, indent=4))
+                    fp.write(json.dumps(job_info, indent=4))
             else:
-                all_summaries[job_info['name']] = summary
+                all_summaries.append(job_info)
 
         if args.single_file:
             with open(args.output, 'w') as fp:
