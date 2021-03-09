@@ -374,7 +374,11 @@ class Utilities:
             return None
 
         regex_slack_violation = re.compile(
-            r'Slack\s*\(VIOLATED\)\s*:\s*(\-\d*\.\d*)\w*\s*\(required time - arrival time\)')
+            r'Slack\s*\((VIOLATED|MET)\)\s*:\s*([+-]?([0-9]+([.][0-9]*)?|[.][0-9]+))\w*\s*\(required time - arrival time\)')
+
+        t = 'Slack (MET) :        0.107ns  (required time - arrival time)\n'
+        m = matches = regex_slack_violation.match(t)
+
 
         with open(timing_report_path, 'r') as fp:
             lines = fp.readlines()
@@ -382,19 +386,20 @@ class Utilities:
             slack_violations = []
             for ln_num, ln in enumerate(lines):
 
+
                 matches = regex_slack_violation.match(ln)
                 if matches:
 
-                    violation = float(matches.group(1))
+                    slack = float(matches.group(2))
                     source = lines[ln_num + 1].split()[1]
                     dest = lines[ln_num + 3].split()[1]
                     required = float(lines[ln_num + 7].split()[1][0:-2])
                     slack_violations.append({
-                        'violation': violation,
+                        'slack': slack,
                         'source': source,
                         'destination': dest,
                         'requirement': required,
-                        'allowed': required - violation
+                        'allowed': required - slack
                     })
             return slack_violations
 
