@@ -255,11 +255,15 @@ class JenkinsJob:
 
                     print("Downloading artifacts from " + dl_url)
                     dl_dir = self.dir + '/artifacts.zip'
-                    should_download = True
 
-                    if os.path.isfile(dl_dir) and self.no_prompt == False:
-                        should_download = queryYesNo("Archive already exists at " +
-                                                     dl_dir + ", download again?", 'no')
+
+                    should_download = True
+                    if os.path.isfile(dl_dir):
+                        if self.no_prompt == False:
+                            should_download = False
+                        else:
+                            should_download = queryYesNo("Archive already exists at " +
+                                                     dl_dir + ", download again?", 'no')            
                     if should_download:
                         with open(dl_dir, 'wb') as f:
                             response = requests.get(
