@@ -257,7 +257,7 @@ class JenkinsJob:
                     dl_dir = self.dir + '/artifacts.zip'
                     should_download = True
 
-                    if os.path.isfile(dl_dir):
+                    if os.path.isfile(dl_dir) and self.no_prompt == False:
                         should_download = queryYesNo("Archive already exists at " +
                                                      dl_dir + ", download again?", 'no')
                     if should_download:
