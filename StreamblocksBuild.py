@@ -259,7 +259,7 @@ class JenkinsJob:
 
                     should_download = True
                     if os.path.isfile(dl_dir):
-                        if self.no_prompt == False:
+                        if self.no_prompt == True:
                             should_download = False
                         else:
                             should_download = queryYesNo("Archive already exists at " +
